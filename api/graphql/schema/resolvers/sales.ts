@@ -7,13 +7,13 @@ import {
     getDocs,
     orderBy,
     query,
-    serverTimestamp, updateDoc,
+    serverTimestamp,
+    updateDoc,
     where,
 } from 'firebase/firestore'
 import {db} from '../../../db/firebase'
 import {ItemType, LastSale, Sale, SaleData} from '../types/sales'
 import {endOfDay, startOfDay} from 'date-fns'
-import {tr} from 'date-fns/locale'
 
 const salesCollection = collection(db, 'sales')
 
