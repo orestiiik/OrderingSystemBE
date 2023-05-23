@@ -1,0 +1,100 @@
+type Sale {
+    id: String!
+    data: SaleData!
+}
+
+type SaleData {
+    done: Boolean,
+    address: Address
+    person: Person
+    price: Float!
+    timestamp: String,
+    order: [ItemType]
+}
+
+type Address {
+    city: String,
+    street: String,
+    note: String,
+}
+
+type Person {
+    fullName: String,
+    telephone: String,
+}
+
+type ItemType {
+    category: Category
+    items: [ItemDataType]
+}
+
+type ItemDataType {
+    name: String,
+    price: Float,
+    weight: Float,
+    liquid: Boolean,
+    state: String
+    quantity: Int,
+}
+
+type LastSale {
+    date: String,
+    totalPrice: Float,
+}
+
+type Query {
+    getSales(active: Boolean!): [Sale!]!
+    getSaleById(id: String!): Sale
+    getTodaySalesTotal: Float!
+    getTodayPriceTotal: Float!
+    getTotalSoldQuantity: Float!
+    getLastSales: [LastSale!]
+}
+
+input ItemTypeInput {
+    category: CategoryInputType
+    items: [ItemDataTypeInput]
+}
+
+input ItemDataTypeInput {
+    name: String,
+    price: Float,
+    weight: Float,
+    liquid: Boolean,
+    state: String
+    quantity: Int,
+}
+
+input CategoryInputType {
+    id: String,
+    data: CategoryDataType
+}
+
+input CategoryDataType {
+    name: String,
+    active: Boolean
+}
+
+input SaleInput {
+    done: Boolean
+    address: AddressInput
+    person: PersonInput
+    order: [ItemTypeInput]
+}
+
+input AddressInput {
+    city: String,
+    street: String,
+    note: String,
+}
+
+input PersonInput {
+    fullName: String,
+    telephone: String,
+}
+
+type Mutation {
+    updateSaleStatus(id: String!): Boolean
+    createSale(newSale: SaleInput!): Sale
+    deleteSale(id: String!): Boolean
+}

@@ -1,0 +1,48 @@
+type Item {
+    id: String,
+    data: ItemData
+}
+
+type CategoryInfo {
+    name: String,
+    active: Boolean
+}
+
+type Category {
+    id: String,
+    data: CategoryInfo
+}
+
+input ItemInput {
+    name: String,
+    category: String,
+    price: Float,
+    weight: Float,
+    liquid: Boolean,
+    state: String
+}
+
+type ItemData {
+    name: String,
+    category: Category,
+    price: Float,
+    weight: Float,
+    liquid: Boolean,
+    state: String
+}
+
+input ItemInputWithId {
+    id: String,
+    data: ItemInput
+}
+
+type Mutation {
+    updateItem(item: ItemInputWithId): Boolean
+    createItem(newItem: ItemInput): Item
+    deleteItem(id: String!): Boolean
+}
+
+type Query {
+    getItems: [Item]
+    getItemById(id: String!): Item
+}

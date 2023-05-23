@@ -1,0 +1,53 @@
+type UserWithId {
+    id: String,
+    data: User
+}
+
+type UserWithToken {
+    token: String,
+    user: UserWithId
+}
+
+type User {
+    username: String
+    firstName: String
+    lastName: String
+    password: String
+    roles: [String]
+}
+
+type Query {
+    getUsers: [UserWithId]
+    getUserById(id: String!): UserWithId
+    getUserFromToken(token: String!): UserWithToken
+}
+
+input userData {
+    username: String
+    firstName: String
+    lastName: String
+    password: String
+    roles: [String]
+}
+
+input inputUser {
+    id: String,
+    username: String
+    firstName: String
+    lastName: String
+    password: String
+    roles: [String]
+}
+
+input LoginInput {
+    username: String!
+    password: String!
+}
+
+type Mutation {
+    updateUser(user: inputUser) : Boolean
+    createUser(newUser: userData!): UserWithId
+    deleteUser(id: String!): Boolean
+    loginUser(input: LoginInput!): UserWithToken
+    getUserFromToken(token: String!): UserWithToken
+}
