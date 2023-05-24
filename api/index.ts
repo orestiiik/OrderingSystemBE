@@ -170,11 +170,11 @@ const typeDefs = gql`
     }
 
     type Query {
-        getSales(active: Boolean!): [Sale!]!
+        getSales(active: Boolean!): [Sale!]
         getSaleById(id: String!): Sale
-        getTodaySalesTotal: Float!
-        getTodayPriceTotal: Float!
-        getTotalSoldQuantity: Float!
+        getTodaySalesTotal: Float
+        getTodayPriceTotal: Float
+        getTotalSoldQuantity: Float
         getLastSales: [LastSale!]
         getUsers: [UserWithId]
         getUserById(id: String!): UserWithId

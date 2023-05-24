@@ -14,7 +14,7 @@ const categoryResolver: { Query: any, Mutation: any } = {
                 id: item.id,
                 data: item.data(),
             }))
-            return categories as Category[]
+            return categories as Category[] ?? [{id: 'nothing found'}] as Category[]
         },
         getCategoryById: async (
             _: any,
