@@ -14,6 +14,8 @@ const categoryResolver: { Query: any, Mutation: any } = {
                 id: item.id,
                 data: item.data(),
             }))
+            console.log(docsSnap.docs)
+            console.log('netusim')
             return categories as Category[]
         },
         getCategoryById: async (

@@ -91,7 +91,7 @@ const saleResolver: { Query: any; Mutation: any } = {
 
                 lastFiveDaysSales.push({
                     date: date.toISOString().slice(0, 10),
-                    totalPrice,
+                    totalPrice: parseFloat((Math.round(totalPrice * 100) / 100).toFixed(2)),
                 })
             }
             return lastFiveDaysSales.reverse()
@@ -127,7 +127,7 @@ const saleResolver: { Query: any; Mutation: any } = {
                 total += calculateOrderPrice(saleData.order)
             })
 
-            return total
+            return parseFloat((Math.round(total * 100) / 100).toFixed(2))
         },
         getTotalSoldQuantity: async (): Promise<number> => {
             const startOfToday = startOfDay(new Date())
@@ -165,7 +165,7 @@ const saleResolver: { Query: any; Mutation: any } = {
 
             const response = await addDoc(salesCollection, {
                 timestamp,
-                price: totalPrice ?? 0,
+                price: totalPrice ? parseFloat((Math.round(totalPrice * 100) / 100).toFixed(2)) : 0,
                 ...args.newSale,
             })
             return {
