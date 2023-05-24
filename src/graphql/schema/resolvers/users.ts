@@ -8,14 +8,12 @@ import DocumentData = firebase.firestore.DocumentData
 
 require('dotenv').config()
 
-const secretKey = process.env.JWT_SECRET
-
-const q = query(collection(db, 'users'))
-const colRef = collection(db, 'users')
 
 const userResolvers: { Query: any; Mutation: any } = {
     Query: {
         getUsers: async (): Promise<{ data: DocumentData; id: string }[]> => {
+            const colRef = collection(db, 'users')
+
             const docsSnap = await getDocs(colRef)
             const users = docsSnap.docs.map(item => ({
                 id: item.id,
@@ -39,6 +37,7 @@ const userResolvers: { Query: any; Mutation: any } = {
             _: any,
             {token}: { token: string },
         ): Promise<UserWithToken> => {
+            const secretKey = process.env.JWT_SECRET
             try {
                 const decodedToken: any = jwt.verify(token, secretKey)
                 const userId = decodedToken.userId
@@ -117,6 +116,8 @@ const userResolvers: { Query: any; Mutation: any } = {
             _: any,
             {input: {username, password}}: { input: { username: string; password: string } },
         ): Promise<UserWithToken> => {
+            const secretKey = process.env.JWT_SECRET
+            const colRef = collection(db, 'users')
             const docsSnap = await getDocs(colRef)
             const users = docsSnap.docs.map(item => ({
                 id: item.id,
@@ -140,6 +141,7 @@ const userResolvers: { Query: any; Mutation: any } = {
             _: any,
             {token}: { token: string },
         ): Promise<UserWithToken> => {
+            const secretKey = process.env.JWT_SECRET
             try {
                 const decodedToken: any = jwt.verify(token, secretKey)
                 const userId = decodedToken.userId

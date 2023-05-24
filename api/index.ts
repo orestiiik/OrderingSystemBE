@@ -283,6 +283,7 @@ const typeDefs = gql`
         password: String!
     }
 `;
+
 const startApolloServer = async(app, httpServer) => {
     const server = new ApolloServer({
         context: ({ req }) => ({ req }),

@@ -4,11 +4,11 @@ import {Item, ItemData} from '../types/items'
 
 require('dotenv').config()
 
-const itemsCollection = collection(db, 'items')
 
 const itemResolver: { Query: any, Mutation: any } = {
     Query: {
         getItems: async (): Promise<Item[]> => {
+            const itemsCollection = collection(db, 'items')
             const docsSnap = await getDocs(itemsCollection)
             const itemPromises = docsSnap.docs.map(async (item) => {
                 const categoryRef = doc(db, 'categories', item.data()?.category)
@@ -54,6 +54,7 @@ const itemResolver: { Query: any, Mutation: any } = {
             _: any,
             args: { newItem: ItemData },
         ): Promise<Item | null> => {
+            const itemsCollection = collection(db, 'items')
             const response = await addDoc(itemsCollection, {
                 ...args.newItem,
             })

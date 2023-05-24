@@ -15,17 +15,6 @@ import {db} from '../../../db/firebase'
 import {ItemType, LastSale, Sale, SaleData} from '../types/sales'
 import {endOfDay, startOfDay} from 'date-fns'
 
-const salesCollection = collection(db, 'sales')
-
-const calculateOrderPrice = (order: ItemType[]): number => {
-    let totalPrice = 0
-    order?.forEach((item) => {
-        item.items?.forEach(x =>
-            totalPrice += x.price * x.quantity,
-        )
-    })
-    return totalPrice
-}
 
 const saleResolver: { Query: any; Mutation: any } = {
     Query: {
@@ -33,6 +22,7 @@ const saleResolver: { Query: any; Mutation: any } = {
             _: any,
             args: { active: boolean },
         ): Promise<Sale[]> => {
+            const salesCollection = collection(db, 'sales')
             const docsSnap = await getDocs(query(
                 salesCollection,
                 where('done', '==', !args.active),
@@ -61,6 +51,7 @@ const saleResolver: { Query: any; Mutation: any } = {
             return null
         },
         getLastSales: async (): Promise<LastSale[]> => {
+            const salesCollection = collection(db, 'sales')
             const today = new Date()
             today.setHours(0, 0, 0, 0) // Set the time to the start of the day
 
@@ -83,6 +74,16 @@ const saleResolver: { Query: any; Mutation: any } = {
 
                 const salesSnapshot = await getDocs(salesQuery)
 
+                const calculateOrderPrice = (order: ItemType[]): number => {
+                    let totalPrice = 0
+                    order?.forEach((item) => {
+                        item.items?.forEach(x =>
+                            totalPrice += x.price * x.quantity,
+                        )
+                    })
+                    return totalPrice
+                }
+
                 let totalPrice = 0
                 salesSnapshot?.docs?.forEach((doc: any) => {
                     const saleData = doc.data() as SaleData
@@ -97,6 +98,7 @@ const saleResolver: { Query: any; Mutation: any } = {
             return lastFiveDaysSales.reverse()
         },
         getTodaySalesTotal: async (): Promise<number> => {
+            const salesCollection = collection(db, 'sales')
             const startOfToday = startOfDay(new Date())
             const endOfToday = endOfDay(new Date())
             const querySnapshot = await getDocs(
@@ -110,6 +112,7 @@ const saleResolver: { Query: any; Mutation: any } = {
             return querySnapshot.docs.length
         },
         getTodayPriceTotal: async (): Promise<number> => {
+            const salesCollection = collection(db, 'sales')
             const startOfToday = startOfDay(new Date())
             const endOfToday = endOfDay(new Date())
 
@@ -122,6 +125,16 @@ const saleResolver: { Query: any; Mutation: any } = {
 
             let total = 0
 
+            const calculateOrderPrice = (order: ItemType[]): number => {
+                let totalPrice = 0
+                order?.forEach((item) => {
+                    item.items?.forEach(x =>
+                        totalPrice += x.price * x.quantity,
+                    )
+                })
+                return totalPrice
+            }
+
             salesSnapshot.docs.forEach((doc: any) => {
                 const saleData = doc.data() as SaleData
                 total += calculateOrderPrice(saleData.order)
@@ -130,6 +143,7 @@ const saleResolver: { Query: any; Mutation: any } = {
             return parseFloat((Math.round(total * 100) / 100).toFixed(2))
         },
         getTotalSoldQuantity: async (): Promise<number> => {
+            const salesCollection = collection(db, 'sales')
             const startOfToday = startOfDay(new Date())
             const endOfToday = endOfDay(new Date())
 
@@ -160,8 +174,21 @@ const saleResolver: { Query: any; Mutation: any } = {
             _: any,
             args: { newSale: SaleData },
         ): Promise<Sale | null> => {
+            const salesCollection = collection(db, 'sales')
             const timestamp = serverTimestamp()
+
+            const calculateOrderPrice = (order: ItemType[]): number => {
+                let totalPrice = 0
+                order?.forEach((item) => {
+                    item.items?.forEach(x =>
+                        totalPrice += x.price * x.quantity,
+                    )
+                })
+                return totalPrice
+            }
+
             const totalPrice = calculateOrderPrice(args.newSale.order)
+
 
             const response = await addDoc(salesCollection, {
                 timestamp,

@@ -4,11 +4,10 @@ import {Category, CategoryData} from '../types/categories'
 
 require('dotenv').config()
 
-const colRef = collection(db, 'categories')
-
 const categoryResolver: { Query: any, Mutation: any } = {
     Query: {
         getCategories: async (): Promise<Category[]> => {
+            const colRef = collection(db, 'categories')
             const docsSnap = await getDocs(colRef)
             const categories = docsSnap.docs.map(item => ({
                 id: item.id,
