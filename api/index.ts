@@ -30,7 +30,6 @@ const app = express()
 
 app.use(cors())
 app.use(express.json())
-app.listen(4040)
 
 const httpServer = http.createServer(app)
 
@@ -461,7 +460,6 @@ const resolvers = {
             salesSnapshot.docs.forEach((doc: any) => {
                 const saleData = doc.data() as SaleData
                 saleData.order?.forEach((item: ItemType) => {
-                    console.log(item)
                     item.items?.forEach(x =>
                         totalQuantity += x.quantity,
                     )

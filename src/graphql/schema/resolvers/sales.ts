@@ -159,7 +159,6 @@ const saleResolver: { Query: any; Mutation: any } = {
             salesSnapshot.docs.forEach((doc: any) => {
                 const saleData = doc.data() as SaleData
                 saleData.order?.forEach((item: ItemType) => {
-                    console.log(item)
                     item.items?.forEach(x =>
                         totalQuantity += x.quantity,
                     )
