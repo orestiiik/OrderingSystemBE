@@ -132,7 +132,7 @@ const userResolvers: { Query: any; Mutation: any } = {
                 throw new Error('Nesprávne heslo.')
             }
 
-            const token = jwt.sign({userId: user.id}, secretKey, {expiresIn: '3d'}) // Customize the expiration time as needed
+            const token = jwt.sign({userId: user.id}, secretKey, {expiresIn: '1d'}) // Customize the expiration time as needed
 
             return {user: user as User, token}
         },

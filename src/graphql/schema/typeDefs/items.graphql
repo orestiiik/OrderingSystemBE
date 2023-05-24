@@ -35,14 +35,3 @@ input ItemInputWithId {
     id: String,
     data: ItemInput
 }
-
-type Mutation {
-    updateItem(item: ItemInputWithId): Boolean
-    createItem(newItem: ItemInput): Item
-    deleteItem(id: String!): Boolean
-}
-
-type Query {
-    getItems: [Item]
-    getItemById(id: String!): Item
-}

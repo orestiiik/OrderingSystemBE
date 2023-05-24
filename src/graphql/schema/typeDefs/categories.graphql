@@ -1,0 +1,25 @@
+type CategoryWithId {
+    id: String,
+    data: CategoryType
+}
+
+type CategoryType {
+    name: String,
+    active: Boolean
+}
+
+
+input CategoryInput {
+    name: String,
+    active: Boolean
+}
+
+input CategoryData {
+    name: String,
+    active: Boolean
+}
+
+input CategoryInputWithId {
+    id: String,
+    data: CategoryData
+}

@@ -49,6 +49,13 @@ type Query {
     getTodayPriceTotal: Float!
     getTotalSoldQuantity: Float!
     getLastSales: [LastSale!]
+    getUsers: [UserWithId]
+    getUserById(id: String!): UserWithId
+    getUserFromToken(token: String!): UserWithToken
+    getCategories: [CategoryWithId]
+    getCategoryById(id: String!): CategoryWithId
+    getItems: [Item]
+    getItemById(id: String!): Item
 }
 
 input ItemTypeInput {
@@ -97,4 +104,15 @@ type Mutation {
     updateSaleStatus(id: String!): Boolean
     createSale(newSale: SaleInput!): Sale
     deleteSale(id: String!): Boolean
+    updateUser(user: inputUser) : Boolean
+    createUser(newUser: userData!): UserWithId
+    deleteUser(id: String!): Boolean
+    loginUser(input: LoginInput!): UserWithToken
+    getUserFromToken(token: String!): UserWithToken
+    updateCategory(category: CategoryInputWithId) : Boolean
+    createCategory(newCategory: CategoryInput): CategoryWithId
+    deleteCategory(id: String!): Boolean
+    updateItem(item: ItemInputWithId): Boolean
+    createItem(newItem: ItemInput): Item
+    deleteItem(id: String!): Boolean
 }
