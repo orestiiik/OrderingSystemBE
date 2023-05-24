@@ -1,11 +1,10 @@
 import {User, UserData, UserDataWidthId, UserWithToken} from '../types/users'
-import bcrypt from 'bcrypt'
 import {addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc} from 'firebase/firestore'
 import {db} from '../../../db/firebase'
 import firebase from 'firebase/compat'
 import jwt from 'jsonwebtoken'
+import bcrypt from 'bcrypt'
 import DocumentData = firebase.firestore.DocumentData
-
 require('dotenv').config()
 
 
