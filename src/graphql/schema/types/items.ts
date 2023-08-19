@@ -1,7 +1,11 @@
-
 export interface Item {
     id: string;
     data: ItemData;
+}
+
+export interface NewItem {
+    id: string;
+    data: NewItemData;
 }
 
 export interface ItemData {
@@ -11,6 +15,16 @@ export interface ItemData {
     weight: number;
     liquid: boolean;
     state: string;
+}
+
+export interface NewItemData {
+    name: string;
+    category: string;
+    price: number;
+    weight: number;
+    liquid: boolean;
+    state: string;
+    ingredients: [string]
 }
 
 export interface Category {

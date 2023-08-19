@@ -1,58 +1,63 @@
+import {Db, ObjectId} from 'mongodb'
 import {User, UserData, UserDataWidthId, UserWithToken} from '../types/users'
-import {addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc} from 'firebase/firestore'
-import {db} from '../../../db/firebase'
-import firebase from 'firebase/compat'
-import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
-import DocumentData = firebase.firestore.DocumentData
-require('dotenv').config()
-
+import jwt from 'jsonwebtoken'
 
 const userResolvers: { Query: any; Mutation: any } = {
     Query: {
-        getUsers: async (): Promise<{ data: DocumentData; id: string }[]> => {
-            const colRef = collection(db, 'users')
+        getUsers: async (
+            _: any,
+            __: any,
+            {db}: { db: Db },
+        ): Promise<User[]> => {
+            const usersCollection = db.collection('users')
+            const users = await usersCollection.find().toArray()
 
-            const docsSnap = await getDocs(colRef)
-            const users = docsSnap.docs.map(item => ({
-                id: item.id,
-                data: item.data(),
+            return users.map((user: any) => ({
+                id: user._id.toString(),
+                data: user as UserData,
             }))
-            return users
         },
         getUserById: async (
             _: any,
             args: { id: string },
+            {db}: { db: Db },
         ): Promise<User | null> => {
-            const docRef = doc(db, 'users', args.id)
-            const docsSnap = await getDoc(docRef)
+            const usersCollection = db.collection('users')
+            const user = await usersCollection.findOne({_id: new ObjectId(args.id)})
+
+            if (!user) {
+                return null
+            }
 
             return {
-                id: args.id,
-                data: docsSnap.data() as UserData,
+                id: user._id.toString(),
+                data: user as unknown as UserData,
             }
         },
         getUserFromToken: async (
             _: any,
             {token}: { token: string },
+            {db}: { db: Db },
         ): Promise<UserWithToken> => {
             const secretKey = process.env.JWT_SECRET
+
             try {
                 const decodedToken: any = jwt.verify(token, secretKey)
                 const userId = decodedToken.userId
 
-                const docRef = doc(db, 'users', userId)
-                const docsSnap = await getDoc(docRef)
+                const usersCollection = db.collection('users')
+                const user = await usersCollection.findOne({_id: new ObjectId(userId)})
 
-                if (!docsSnap.exists) {
+                if (!user) {
                     throw new Error('User not found')
                 }
 
                 return {
                     token,
                     user: {
-                        id: docsSnap.id,
-                        data: docsSnap.data() as UserData,
+                        id: user._id.toString(),
+                        data: user as unknown as UserData,
                     },
                 }
             } catch (error) {
@@ -64,104 +69,98 @@ const userResolvers: { Query: any; Mutation: any } = {
         createUser: async (
             _: any,
             args: { newUser: UserData },
-        ): Promise<User | null> => {
+            {db}: { db: Db },
+        ): Promise<boolean> => {
+            const usersCollection = db.collection('users')
             const {username, firstName, lastName, password, roles} = args.newUser
             const hashedPassword = await bcrypt.hash(password, 12)
-            const response = await addDoc(collection(db, 'users'),
-                {
-                    username,
-                    firstName,
-                    lastName,
-                    hashedPassword,
-                    roles,
-                },
-            )
-            return {
-                id: response.id,
-                data: args.newUser,
+
+            const newUserDoc = {
+                username,
+                firstName,
+                lastName,
+                password: hashedPassword,
+                roles,
             }
+
+            const result = await usersCollection.insertOne(newUserDoc)
+            const insertedUser = result.insertedId
+
+            return !!insertedUser
         },
         updateUser: async (
             _: any,
             args: { user: UserDataWidthId },
+            { db }: { db: Db }
         ): Promise<boolean> => {
-            const {id, password: rawPassword, ...data} = args.user
-            const docRef = doc(db, 'users', id)
-            const docsSnap = await getDoc(docRef)
-            const password = await bcrypt.hash(rawPassword ?? docsSnap.data().password, 12)
+            const { id, password: rawPassword, ...data } = args.user;
+            const usersCollection = db.collection('users');
+            const docToUpdate = {
+                ...data,
+                password: rawPassword ? await bcrypt.hash(rawPassword, 12) : undefined,
+            };
+
             try {
-                await updateDoc(docRef, {
-                    password,
-                    ...data,
-                })
-                return true
-            } catch (e) {
-                return false
+                const result = await usersCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: docToUpdate }
+                );
+                return result.modifiedCount > 0;
+            } catch (error) {
+                console.error(error);
+                return false;
             }
         },
         deleteUser: async (
             _: any,
             args: { id: string },
+            { db }: { db: Db }
         ): Promise<boolean> => {
-            const docRef = doc(db, 'users', args.id)
+            const usersCollection = db.collection('users');
+
             try {
-                deleteDoc(docRef)
-                return true
-            } catch (e) {
-                return false
+                const result = await usersCollection.deleteOne({ _id: new ObjectId(args.id) });
+                return result.deletedCount > 0;
+            } catch (error) {
+                console.error(error);
+                return false;
             }
         },
         loginUser: async (
             _: any,
-            {input: {username, password}}: { input: { username: string; password: string } },
+            { input: { username, password } }: { input: { username: string; password: string } },
+            { db }: { db: Db }
         ): Promise<UserWithToken> => {
-            const secretKey = process.env.JWT_SECRET
-            const colRef = collection(db, 'users')
-            const docsSnap = await getDocs(colRef)
-            const users = docsSnap.docs.map(item => ({
-                id: item.id,
-                data: item.data(),
-            }))
-            if (users.length === 0) {
-                throw new Error('Nenašiel sa použivateľ ' + username)
+            const usersCollection = db.collection('users');
+
+            const user = await usersCollection.findOne({ username });
+
+            if (!user) {
+                throw new Error('User not found');
             }
-            const user = users.find(user => user.data.username === username)
-            const passwordMatch = await bcrypt.compare(password, user.data.password)
+
+            const passwordMatch = await bcrypt.compare(password, user.password);
 
             if (!passwordMatch) {
-                throw new Error('Nesprávne heslo.')
+                throw new Error('Incorrect password');
             }
 
-            const token = jwt.sign({userId: user.id}, secretKey, {expiresIn: '1d'}) // Customize the expiration time as needed
+            const secretKey = process.env.JWT_SECRET;
+            const token = jwt.sign({ userId: user._id.toString() }, secretKey, { expiresIn: '1d' });
 
-            return {user: user as User, token}
-        },
-        getUserFromToken: async (
-            _: any,
-            {token}: { token: string },
-        ): Promise<UserWithToken> => {
-            const secretKey = process.env.JWT_SECRET
-            try {
-                const decodedToken: any = jwt.verify(token, secretKey)
-                const userId = decodedToken.userId
-
-                const docRef = doc(db, 'users', userId)
-                const docsSnap = await getDoc(docRef)
-
-                if (!docsSnap.exists) {
-                    throw new Error('User not found')
-                }
-
-                return {
-                    token,
-                    user: {
-                        id: docsSnap.id,
-                        data: docsSnap.data() as UserData,
+            return {
+                user: {
+                    id: user._id.toString(),
+                    data: {
+                        username: user.username,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        password: '',
+                        roles: user.roles,
                     },
-                }
-            } catch (error) {
-                throw new Error('Invalid token')
-            }
+                },
+                token,
+            };
         },
     },
 }

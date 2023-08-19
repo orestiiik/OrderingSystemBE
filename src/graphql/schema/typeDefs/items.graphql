@@ -19,7 +19,8 @@ input ItemInput {
     price: Float,
     weight: Float,
     liquid: Boolean,
-    state: String
+    state: String,
+    ingredients: [String]
 }
 
 type ItemData {
@@ -28,7 +29,7 @@ type ItemData {
     price: Float,
     weight: Float,
     liquid: Boolean,
-    state: String
+    state: String,
 }
 
 input ItemInputWithId {

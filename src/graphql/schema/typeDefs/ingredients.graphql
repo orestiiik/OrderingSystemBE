@@ -1,0 +1,23 @@
+type Ingredient {
+    id: String,
+    name: String,
+    canBeExtra: Boolean,
+    extraPrice: Float
+}
+
+input IngredientInput {
+    name: String,
+    canBeExtra: Boolean,
+    extraPrice: Float
+}
+
+input UpdateIngredientInput {
+    id: String,
+    name: String,
+    canBeExtra: Boolean,
+    extraPrice: Float
+}
+
+extend type ItemData {
+    ingredients: [Ingredient]
+}
