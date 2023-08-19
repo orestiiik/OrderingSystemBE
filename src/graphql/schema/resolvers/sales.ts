@@ -1,169 +1,175 @@
-import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    getDocs,
-    orderBy,
-    query,
-    serverTimestamp,
-    updateDoc,
-    where,
-} from 'firebase/firestore'
-import {db} from '../../../db/firebase'
-import {ItemType, LastSale, Sale, SaleData} from '../types/sales'
-import {endOfDay, startOfDay} from 'date-fns'
-
+import {Db, ObjectId} from 'mongodb'
+import {LastSale, Sale, SaleData} from '../types/sales'
 
 const saleResolver: { Query: any; Mutation: any } = {
     Query: {
         getSales: async (
             _: any,
             args: { active: boolean },
+            {db}: { db: Db },
         ): Promise<Sale[]> => {
-            const salesCollection = collection(db, 'sales')
-            const docsSnap = await getDocs(query(
-                salesCollection,
-                where('done', '==', !args.active),
-            ))
-            const sales = docsSnap.docs.map((doc) => ({
-                id: doc.id,
-                data: doc.data() as SaleData,
-            }))
+            const salesCollection = db.collection('sales')
+            const salesQuery = {done: !args.active}
+            const sales = await salesCollection.find(salesQuery).toArray()
 
-            return sales.reverse() as Sale[]
+            return sales.map((doc: any) => ({
+                id: doc._id.toString(),
+                data: doc as SaleData,
+            }))
         },
         getSaleById: async (
             _: any,
             args: { id: string },
+            {db}: { db: Db },
         ): Promise<Sale | null> => {
-            const docRef = doc(db, 'sales', args.id)
-            const docSnap = await getDoc(docRef)
+            const salesCollection = db.collection('sales')
+            const sale = await salesCollection.findOne({_id: new ObjectId(args.id)})
 
-            if (docSnap.exists()) {
-                return {
-                    id: args.id,
-                    data: docSnap.data() as SaleData,
-                }
+            if (!sale) {
+                return null
             }
 
-            return null
+            return {
+                id: sale._id.toString(),
+                data: sale as unknown as SaleData,
+            }
         },
-        getLastSales: async (): Promise<LastSale[]> => {
-            const salesCollection = collection(db, 'sales')
-            const today = new Date()
-            today.setHours(0, 0, 0, 0) // Set the time to the start of the day
-
+        getLastSales: async (
+            _: any,
+            __: any,
+            {db}: { db: Db },
+        ): Promise<LastSale[]> => {
+            const salesCollection = db.collection('sales')
             const lastFiveDays = Array.from({length: 5}, (_, index) => {
-                return new Date(today.getTime() - index * 24 * 60 * 60 * 1000)
+                const date = new Date()
+                date.setDate(date.getDate() - index)
+                return date
             })
 
             const lastFiveDaysSales: LastSale[] = []
 
             for (const date of lastFiveDays) {
-                const startOfDate = startOfDay(date)
-                const endOfDate = endOfDay(date)
+                const startOfDay = new Date(date.setHours(0, 0, 0, 0))
+                const endOfDay = new Date(date.setHours(23, 59, 59, 999))
 
-                const salesQuery = query(
-                    salesCollection,
-                    where('timestamp', '>=', startOfDate),
-                    where('timestamp', '<=', endOfDate),
-                    orderBy('timestamp'),
-                )
-
-                const salesSnapshot = await getDocs(salesQuery)
-
-                const calculateOrderPrice = (order: ItemType[]): number => {
-                    let totalPrice = 0
-                    order?.forEach((item) => {
-                        item.items?.forEach(x =>
-                            totalPrice += x.price * x.quantity,
-                        )
-                    })
-                    return totalPrice
+                const salesQuery = {
+                    timestamp: {$gte: startOfDay, $lte: endOfDay},
                 }
 
-                let totalPrice = 0
-                salesSnapshot?.docs?.forEach((doc: any) => {
-                    const saleData = doc.data() as SaleData
-                    totalPrice += calculateOrderPrice(saleData.order)
-                })
+                const sales = await salesCollection.find(salesQuery).toArray()
+                const totalPrice = sales.reduce((total, sale) => {
+                    const orderTotal = sale.order.reduce(
+                        (orderTotal, item) => {
+                            return (
+                                orderTotal +
+                                item.items.reduce(
+                                    (itemTotal, x) =>
+                                        itemTotal + x.price * x.quantity,
+                                    0,
+                                )
+                            )
+                        },
+                        0,
+                    )
+                    return total + orderTotal
+                }, 0)
 
                 lastFiveDaysSales.push({
                     date: date.toISOString().slice(0, 10),
-                    totalPrice: parseFloat((Math.round(totalPrice * 100) / 100).toFixed(2)),
+                    totalPrice: parseFloat(
+                        (Math.round(totalPrice * 100) / 100).toFixed(2),
+                    ),
                 })
             }
+
             return lastFiveDaysSales.reverse()
         },
-        getTodaySalesTotal: async (): Promise<number> => {
-            const salesCollection = collection(db, 'sales')
-            const startOfToday = startOfDay(new Date())
-            const endOfToday = endOfDay(new Date())
-            const querySnapshot = await getDocs(
-                query(
-                    salesCollection,
-                    where('timestamp', '>=', startOfToday),
-                    where('timestamp', '<=', endOfToday),
-                ),
-            )
+        getTodaySalesTotal: async (
+            _: any,
+            __: any,
+            {db}: { db: Db },
+        ): Promise<number> => {
+            const salesCollection = db.collection('sales')
+            const startOfDay = new Date()
+            startOfDay.setHours(0, 0, 0, 0)
+            const endOfDay = new Date()
+            endOfDay.setHours(23, 59, 59, 999)
 
-            return querySnapshot.docs.length
-        },
-        getTodayPriceTotal: async (): Promise<number> => {
-            const salesCollection = collection(db, 'sales')
-            const startOfToday = startOfDay(new Date())
-            const endOfToday = endOfDay(new Date())
-
-            const salesQuery = query(
-                salesCollection,
-                where('timestamp', '>=', startOfToday),
-                where('timestamp', '<', endOfToday),
-            )
-            const salesSnapshot = await getDocs(salesQuery)
-
-            let total = 0
-
-            const calculateOrderPrice = (order: ItemType[]): number => {
-                let totalPrice = 0
-                order?.forEach((item) => {
-                    item.items?.forEach(x =>
-                        totalPrice += x.price * x.quantity,
-                    )
-                })
-                return totalPrice
+            const salesQuery = {
+                timestamp: {$gte: startOfDay, $lte: endOfDay},
             }
 
-            salesSnapshot.docs.forEach((doc: any) => {
-                const saleData = doc.data() as SaleData
-                total += calculateOrderPrice(saleData.order)
-            })
+            const sales = await salesCollection.find(salesQuery).toArray()
 
-            return parseFloat((Math.round(total * 100) / 100).toFixed(2))
+            return sales.length
         },
-        getTotalSoldQuantity: async (): Promise<number> => {
-            const salesCollection = collection(db, 'sales')
-            const startOfToday = startOfDay(new Date())
-            const endOfToday = endOfDay(new Date())
+        getTodayPriceTotal: async (
+            _: any,
+            __: any,
+            {db}: { db: Db },
+        ): Promise<number> => {
+            const salesCollection = db.collection('sales')
+            const startOfDay = new Date()
+            startOfDay.setHours(0, 0, 0, 0)
+            const endOfDay = new Date()
+            endOfDay.setHours(23, 59, 59, 999)
 
-            const salesQuery = query(
-                salesCollection,
-                where('timestamp', '>=', startOfToday),
-                where('timestamp', '<', endOfToday),
-            )
-            const salesSnapshot = await getDocs(salesQuery)
+            const salesQuery = {
+                timestamp: {$gte: startOfDay, $lt: endOfDay},
+            }
 
-            let totalQuantity = 0
+            const sales = await salesCollection.find(salesQuery).toArray()
+            const totalPrice = sales.reduce((total, sale) => {
+                const orderTotal = sale.order.reduce(
+                    (orderTotal, item) => {
+                        return (
+                            orderTotal +
+                            item.items.reduce(
+                                (itemTotal, x) =>
+                                    itemTotal + x.price * x.quantity,
+                                0,
+                            )
+                        )
+                    },
+                    0,
+                )
+                return total + orderTotal
+            }, 0)
 
-            salesSnapshot.docs.forEach((doc: any) => {
-                const saleData = doc.data() as SaleData
-                saleData.order?.forEach((item: ItemType) => {
-                    item.items?.forEach(x =>
-                        totalQuantity += x.quantity,
-                    )
-                })
-            })
+            return parseFloat((Math.round(totalPrice * 100) / 100).toFixed(2))
+        },
+        getTotalSoldQuantity: async (
+            _: any,
+            __: any,
+            {db}: { db: Db },
+        ): Promise<number> => {
+            const salesCollection = db.collection('sales')
+            const startOfDay = new Date()
+            startOfDay.setHours(0, 0, 0, 0)
+            const endOfDay = new Date()
+            endOfDay.setHours(23, 59, 59, 999)
+
+            const salesQuery = {
+                timestamp: {$gte: startOfDay, $lt: endOfDay},
+            }
+
+            const sales = await salesCollection.find(salesQuery).toArray()
+            const totalQuantity = sales.reduce((total, sale) => {
+                const orderQuantity = sale.order.reduce(
+                    (orderQuantity, item) => {
+                        return (
+                            orderQuantity +
+                            item.items.reduce(
+                                (itemQuantity, x) =>
+                                    itemQuantity + x.quantity,
+                                0,
+                            )
+                        )
+                    },
+                    0,
+                )
+                return total + orderQuantity
+            }, 0)
 
             return totalQuantity
         },
@@ -172,62 +178,51 @@ const saleResolver: { Query: any; Mutation: any } = {
         createSale: async (
             _: any,
             args: { newSale: SaleData },
-        ): Promise<Sale | null> => {
-            const salesCollection = collection(db, 'sales')
-            const timestamp = serverTimestamp()
+            {db}: { db: Db },
+        ): Promise<boolean> => {
+            const salesCollection = db.collection('sales')
+            const timestamp = new Date()
 
-            const calculateOrderPrice = (order: ItemType[]): number => {
-                let totalPrice = 0
-                order?.forEach((item) => {
-                    item.items?.forEach(x =>
-                        totalPrice += x.price * x.quantity,
-                    )
-                })
-                return totalPrice
-            }
+            const totalPrice = args.newSale.order.reduce(
+                (total, item) =>
+                    total +
+                    item.items.reduce((itemTotal, x) => itemTotal + x.price * x.quantity, 0),
+                0,
+            )
 
-            const totalPrice = calculateOrderPrice(args.newSale.order)
-
-
-            const response = await addDoc(salesCollection, {
+            const saleDoc = {
                 timestamp,
-                price: totalPrice ? parseFloat((Math.round(totalPrice * 100) / 100).toFixed(2)) : 0,
+                price: parseFloat((Math.round(totalPrice * 100) / 100).toFixed(2)),
                 ...args.newSale,
-            })
-            return {
-                id: response.id,
-                data: {
-                    price: totalPrice,
-                    ...args.newSale,
-                },
             }
+
+            const result = await salesCollection.insertOne(saleDoc)
+            const insertedSale = result.insertedId
+
+            return !!insertedSale
         },
         deleteSale: async (
             _: any,
             args: { id: string },
+            {db}: { db: Db },
         ): Promise<boolean> => {
-            const docRef = doc(db, 'sales', args.id)
+            const salesCollection = db.collection('sales')
+            const result = await salesCollection.deleteOne({_id: new ObjectId(args.id)})
 
-            try {
-                await deleteDoc(docRef)
-                return true
-            } catch (error) {
-                console.log(error)
-                return false
-            }
+            return result.deletedCount > 0
         },
-        updateSaleStatus: async (_: any, args: { id: string }): Promise<boolean> => {
-            const saleRef = doc(db, 'sales', args.id)
+        updateSaleStatus: async (
+            _: any,
+            args: { id: string },
+            {db}: { db: Db },
+        ): Promise<boolean> => {
+            const salesCollection = db.collection('sales')
+            const result = await salesCollection.updateOne(
+                {_id: new ObjectId(args.id)},
+                {$set: {done: true}},
+            )
 
-            try {
-                await updateDoc(saleRef, {done: true})
-
-                return true
-            } catch (error) {
-                console.log(error)
-            }
-
-            return false
+            return result.modifiedCount > 0
         },
     },
 }

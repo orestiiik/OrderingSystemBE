@@ -1,30 +1,37 @@
-import {addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc} from 'firebase/firestore'
-import {db} from '../../../db/firebase'
+import {Db, ObjectId} from 'mongodb'
 import {Category, CategoryData} from '../types/categories'
-
-require('dotenv').config()
 
 const categoryResolver: { Query: any, Mutation: any } = {
     Query: {
-        getCategories: async (): Promise<Category[]> => {
-            const colRef = collection(db, 'categories')
-            const docsSnap = await getDocs(colRef)
-            const categories = docsSnap.docs.map(item => ({
-                id: item.id,
-                data: item.data(),
+        getCategories: async (_: any, __: any, {db}: { db: Db }): Promise<Category[]> => {
+            const categoriesCollection = db.collection('categories')
+            const categories = await categoriesCollection.find().toArray()
+
+            return categories.map(category => ({
+                id: category._id.toString(),
+                data: {
+                    name: category.name,
+                    active: category.active,
+                },
             }))
-            return categories as Category[] ?? [{id: 'nothing found'}] as Category[]
         },
         getCategoryById: async (
             _: any,
             args: { id: string },
+            {db}: { db: Db },
         ): Promise<Category | null> => {
-            const docRef = doc(db, 'categories', args.id)
-            const docsSnap = await getDoc(docRef)
+            const category = await db.collection('categories').findOne({_id: new ObjectId(args.id)})
+
+            if (!category) {
+                return null
+            }
 
             return {
-                id: args.id,
-                data: docsSnap.data() as CategoryData,
+                id: category._id.toString(),
+                data: {
+                    name: category.name,
+                    active: category.active,
+                },
             }
         },
     },
@@ -32,47 +39,39 @@ const categoryResolver: { Query: any, Mutation: any } = {
         createCategory: async (
             _: any,
             args: { newCategory: CategoryData },
+            {db}: { db: Db },
         ): Promise<Category | null> => {
-            const {name, active} = args.newCategory
-            const response = await addDoc(collection(db, 'categories'), {
-                name,
-                active,
-            })
+            const response = await db.collection('categories').insertOne(args.newCategory)
+            const insertedCategory = response.insertedId
+
             return {
-                id: response.id,
+                id: insertedCategory.toString(),
                 data: args.newCategory,
             }
         },
         updateCategory: async (
             _: any,
             args: { category: Category },
+            {db}: { db: Db },
         ): Promise<boolean> => {
-            const {id, data: {name, active}} = args.category
-            const docRef = doc(db, 'categories', id)
-            try {
-                await updateDoc(docRef, {name, active})
-                return true
-            } catch (e) {
-                console.log(e)
-                return false
-            }
+            const {id, data} = args.category
+            const result = await db.collection('categories').updateOne(
+                {_id: new ObjectId(id)},
+                {$set: {name: data.name, active: data.active}},
+            )
+
+            return result.modifiedCount > 0
         },
         deleteCategory: async (
             _: any,
             args: { id: string },
+            {db}: { db: Db },
         ): Promise<boolean> => {
-            const docRef = doc(db, 'categories', args.id)
-            try {
-                await deleteDoc(docRef)
-                return true
-            } catch (e) {
-                console.log(e)
-                return false
-            }
+            const result = await db.collection('categories').deleteOne({_id: new ObjectId(args.id)})
+
+            return result.deletedCount > 0
         },
     },
-
-
 }
 
 export default categoryResolver

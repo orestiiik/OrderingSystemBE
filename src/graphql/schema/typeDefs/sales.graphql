@@ -55,7 +55,9 @@ type Query {
     getCategories: [CategoryWithId]
     getCategoryById(id: String!): CategoryWithId
     getItems: [Item]
-    getItemById(id: String!): Item
+    getItemById(id: String!): Item,
+    getIngredients: [Ingredient],
+    getIngredientById(id: String): Ingredient
 }
 
 input ItemTypeInput {
@@ -114,5 +116,8 @@ type Mutation {
     deleteCategory(id: String!): Boolean
     updateItem(item: ItemInputWithId): Boolean
     createItem(newItem: ItemInput): Item
-    deleteItem(id: String!): Boolean
+    deleteItem(id: String!): Boolean,
+    createIngredient(ingredient: IngredientInput): Boolean,
+    updateIngredient(ingredient: UpdateIngredientInput): Boolean,
+    deleteIngredient(id: String): Boolean
 }
